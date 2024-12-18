@@ -1,0 +1,140 @@
+#!/bin/bash
+
+
+# Identifiant du PC lanceur du script
+main_pc_id=$(hostname | cut -d. -f1)
+
+# Identifiant du PC distant
+distant_pc_id=$main_pc_id
+
+# Identifiant universitaire
+my_id=$(whoami)
+
+# Le chemin du repertoire où se situe l'executable
+program_dir=$(dirname $0)
+
+# Active/désactive la capture du flux de la sortie standard 'stdin'
+enabled_flux=false
+
+# Localisation du flux de donnée entrant
+flux="/dev/stdin"
+
+# Active/désactive le filtrage des PCs en fonction de la présence d'un autre utilisateur
+only_user_connected=false
+
+# Les numéros étudiants des L2 info
+id_l2=$(< $program_dir/id_l2.txt)
+
+# Les numéros étudiants des L2 info
+id_l3=$(< $program_dir/id_l3.txt)
+
+# Nom des PCs des autres utilisateurs qui sont detectés sur un même PC 
+extra_user_string="|---------"
+
+echo_usage(){
+    echo "Usage : $0 [-hu] [-i <identifiat du pc>]"
+}
+echo_opt_h(){
+    echo "Utilisez l'option '-h' pour plus d'informations."
+}
+err_opt(){
+    echo "$0: Erreur de l'utilisation de l'option '$1'." >&2
+    echo_usage
+    echo_opt_h
+}
+
+err_opt_unavailable(){
+    echo "$0: Option '$1' indisponible." >&2
+    echo_usage
+    echo_opt_h
+}
+
+err_unexpected(){
+    echo "$0: Paramètre '$1' inattendu." >&2
+    echo_usage
+    echo_opt_h
+}
+
+
+while [[ $# -gt 0 ]]; do
+    optname=$1
+    case "$1" in
+        -i)
+            shift
+            distant_pc_id="$1"
+            flux=$(mktemp)
+            echo "$distant_pc_id" > "$flux"
+
+            # Vérifier la validité de l'argument
+            if [[ $distant_pc_id =~ ^- || -z $distant_pc_id ]]; then
+                err_opt $optname
+                exit 1
+            fi
+            ;;
+        -u)
+            only_user_connected=true
+            ;;
+        -h) 
+            echo_usage && echo
+            echo -n -e "\t" && echo "Liste des paramètres :"
+
+            echo -n -e "\t" && echo -n "-i <identifiant du pc>"
+            echo -n -e "\t" && echo "Se connecte et lance le programme à l'adresse du PC spécifié."
+
+            echo -n -e "\t" && echo -n "-u"
+            echo -n -e "\t" && echo "N'affiche pas les PCs où aucune session d'utilisateur est ouverte."
+
+            echo -n -e "\t" && echo -n "-h"
+            echo -n -e "\t" && echo "Affiche cette aide."
+
+            exit 1
+            ;;
+        -*)
+            # Option indisponible
+            err_opt_unavailable $optname
+            exit 1
+            ;;
+        *)
+            # Paramètre inattendu
+            err_unexpected $optname
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+
+while read pc_id; do
+    pc_id=$(cut -d' ' -f1 <<< $pc_id) # permet d'enlever l'etat "ON/OFF" d'un id récupéré avec audit_pc
+
+    command_get_id="ps -aux | cut -d' ' -f1 | sort | uniq | grep -E '^[sl][0-9].*$' | grep -v $my_id"
+    user_id=($(cat "$program_dir/password" | $program_dir/sshpass ssh -o StrictHostKeyChecking=no -q $my_id@$pc_id "$command_get_id"  2> /dev/null))
+
+    
+
+    if ! "$only_user_connected" || [ -n "$user_id" ]; then 
+   
+        for (( i = 0; i < ${#user_id[@]}; i++ )); do
+            pc_id_print=$pc_id 
+            if [ $i -gt 0 ]; then
+                pc_id_print=$extra_user_string
+            fi
+
+            echo -n -e "$pc_id_print\t${user_id[$i]}\t"
+            res=$(echo -n "$id_l2" | grep "${user_id[$i]: -4}" | cut -d' ' -f2- | uniq)
+            [ -n "$res" ] && echo -n -e "$res\tL2" # Affiche 'L2' si nom trouvé dans id_l2
+            res=$(echo -n "$id_l3" | grep "${user_id[$i]: -4}" | cut -d' ' -f2- | uniq) 
+            [ -n "$res" ] && echo -n -e "$res\tL3" # Affiche 'L3' si nom trouvé dans id_l3
+            echo
+        done
+    fi
+done < $flux
+
+exit 0
+
+
+
+
+
+
+

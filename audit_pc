@@ -1,0 +1,184 @@
+#!/bin/bash
+
+# Numéros de salle
+all_salles=(110 112 114 120 122 124 130)
+
+# Numéros des PCs de 00 à 25
+first_pc=00
+last_pc=25
+all_pc=($(seq -f "%02g" $first_pc $last_pc))
+
+# Liste des processus lancées en arrière-plan
+list_proc=()
+
+# Active/désactive l'affiche du "ON" et du "OFF"
+print_ON_OFF=true
+
+
+echo_usage(){
+    echo "Usage : $0 [-ho] [-s <numéro de salle>] [-i <numéro de pc>]"
+}
+echo_opt_h(){
+    echo "Utilisez l'option '-h' pour plus d'informations."
+}
+err_opt(){
+    echo "$0: Erreur de l'utilisation de l'option '$1'." >&2
+    echo_usage
+    echo_opt_h
+}
+
+err_opt_unavailable(){
+    echo "$0: Option '$1' indisponible." >&2
+    echo_usage
+    echo_opt_h
+}
+
+err_unexpected(){
+    echo "$0: Paramètre '$1' inattendu." >&2
+    echo_usage
+    echo_opt_h
+}
+
+################### GESTION DES PARAMETRES ###################
+
+while [[ $# -gt 0 ]]; do
+    optname=$1
+    case "$1" in
+        -s)
+            
+            shift
+            salle="$1"
+
+            # Vérifier la validité de l'argument
+            if [[ $salle =~ ^- || -z $salle ]]; then
+                err_opt $optname
+                exit 1
+            fi
+
+            # Vérifier si la salle est dans la liste
+            if [[ "${all_salles[@]}" =~ "$salle" ]]; then
+                all_salles=("$salle")
+            else
+                echo "Ce numéro de salle n'est pas valide."
+                exit 1
+            fi
+            ;;
+        -i)
+            shift
+            num_pc="$1"
+
+            # Vérifier la validité de l'argument
+            if [[ $num_pc =~ ^- || -z $num_pc ]]; then
+                err_opt $optname
+                exit 1
+            fi
+
+            # Vérifier si le numéro du pc est dans la liste
+            if [[ "${all_pc[@]}" =~ "$num_pc" ]]; then
+                all_pc=($(printf "%02d" "$num_pc"))
+            else
+                echo "Ce numéro de pc n'est pas valide."
+                exit 1
+            fi
+            ;;
+        -o)
+            print_ON_OFF=false
+            ;;
+        -h) 
+            echo_usage && echo
+            echo -n -e "\t" && echo "Liste des paramètres :"
+
+            echo -n -e "\t" && echo -n "-s <numéro de salle>"
+            echo -n -e "\t" && echo "N'affiche que les PCs de la salle spécifiée."
+
+            echo -n -e "\t" && echo -n "-i <numéro de pc>"
+            echo -n -e "\t" && echo "N'affiche que les PCs ayant le numéro spécifié."
+
+            echo -n -e "\t" && echo -n "-o"
+            echo -n -e "\t\t\t" && echo "Affiche seulement le nom de PCs allumés."
+
+            echo -n -e "\t" && echo -n "-h"
+            echo -n -e "\t" && echo "Affiche cette aide."
+
+            exit 1
+            ;;
+        -*)
+            # Option indisponible
+            err_opt_unavailable $optname
+            exit 1
+            ;;
+        *)
+            # Paramètre inattendu
+            err_unexpected $optname
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+
+
+
+################### GESTION DE L'INTERRUPTION DU PROGRAMME ###################
+
+
+
+# Fonction de nettoyage
+cleanup() {
+    # Tuer tous les processus en cours
+    for proc in "${list_proc[@]}"; do
+        kill -SIGTERM "$proc" 2> /dev/null > /dev/null
+    done
+    echo "Abandon."
+    exit 1
+}
+
+# Capturer le signal d'interruption (Ctrl+C)
+trap 'cleanup' INT
+
+
+################### GESTION DE L'AUDIT DES PC ###################
+
+# Fonction pour vérifier l'état du PC avec la commande 'ping'
+check_pc_state() {
+    pc_id="ic2s${1}-${2}"
+    # Retour dans une variable pour synchroniser l'affichage
+    output=$( 
+                if ping -c 1 -W 8 $pc_id &> /dev/null; then
+                    echo -n "$pc_id"
+                    if $print_ON_OFF; then
+                        echo -n " ON"
+                    fi
+                    
+                else
+                    if $print_ON_OFF; then
+                        echo "$pc_id OFF"
+                    fi
+                fi
+            )
+    # Empêche d'afficher une ligne vide
+    if [ "$output" ]; then
+        echo $output
+    fi
+
+    
+}
+
+
+# Boucle sur les numéros de salle
+for salle in "${all_salles[@]}"
+do
+    # Boucle sur les numéros de PC
+    for pc in "${all_pc[@]}"
+    do
+        # Appel de la fonction pour vérifier l'état du PC avec ping
+        check_pc_state $salle $pc &
+        list_proc+=($!)
+    done
+done
+
+for proc in "${list_proc[@]}"; do
+    wait "$proc"
+done
+
+
