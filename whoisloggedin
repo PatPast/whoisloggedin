@@ -22,11 +22,28 @@ flux="/dev/stdin"
 # Active/désactive le filtrage des PCs en fonction de la présence d'un autre utilisateur
 only_user_connected=false
 
-# Les numéros étudiants des L2 info
-id_l2=$(< $program_dir/id_l2.txt)
+# Teste l'existence des fichiers contenant les numéros étudiants
+test -f $program_dir/id_l1.txt && test_id_l1=true || test_id_l1=false
+test -f $program_dir/id_l2.txt && test_id_l2=true || test_id_l2=false
+test -f $program_dir/id_l3.txt && test_id_l3=true || test_id_l3=false
+
+# Les numéros étudiants des L1 info
+if $test_id_l1; then
+    id_l1=$(< $program_dir/id_l1.txt)
+    echo test
+fi
 
 # Les numéros étudiants des L2 info
-id_l3=$(< $program_dir/id_l3.txt)
+if $test_id_l2; then
+    id_l2=$(< $program_dir/id_l2.txt)
+fi
+
+# Les numéros étudiants des L3 info
+if $test_id_l3; then
+    id_l3=$(< $program_dir/id_l3.txt)
+fi
+
+
 
 # Nom des PCs des autres utilisateurs qui sont detectés sur un même PC 
 extra_user_string="|---------"
@@ -107,7 +124,7 @@ done
 while read pc_id; do
     pc_id=$(cut -d' ' -f1 <<< $pc_id) # permet d'enlever l'etat "ON/OFF" d'un id récupéré avec audit_pc
 
-    command_get_id="ps -aux | cut -d' ' -f1 | sort | uniq | grep -E '^[sl][0-9].*$' | grep -v $my_id"
+    command_get_id="who | cut -d' ' -f1 | grep -v $my_id | sort | uniq"
     user_id=($(cat "$program_dir/password" | $program_dir/sshpass ssh -o StrictHostKeyChecking=no -q $my_id@$pc_id "$command_get_id"  2> /dev/null))
 
     
@@ -121,10 +138,20 @@ while read pc_id; do
             fi
 
             echo -n -e "$pc_id_print\t${user_id[$i]}\t"
-            res=$(echo -n "$id_l2" | grep "${user_id[$i]: -4}" | cut -d' ' -f2- | uniq)
-            [ -n "$res" ] && echo -n -e "$res\tL2" # Affiche 'L2' si nom trouvé dans id_l2
-            res=$(echo -n "$id_l3" | grep "${user_id[$i]: -4}" | cut -d' ' -f2- | uniq) 
-            [ -n "$res" ] && echo -n -e "$res\tL3" # Affiche 'L3' si nom trouvé dans id_l3
+
+            if $test_id_l1; then
+                res=$(echo -n "$id_l1" | grep "${user_id[$i]: -4}" | cut -d' ' -f2- | uniq)
+                [ -n "$res" ] && echo -n -e "$res\tL2" # Affiche 'L1' si nom trouvé dans id_l1
+            fi
+            if $test_id_l2; then
+                res=$(echo -n "$id_l2" | grep "${user_id[$i]: -4}" | cut -d' ' -f2- | uniq)
+                [ -n "$res" ] && echo -n -e "$res\tL2" # Affiche 'L2' si nom trouvé dans id_l2
+            fi
+            if $test_id_l3; then
+                res=$(echo -n "$id_l3" | grep "${user_id[$i]: -4}" | cut -d' ' -f2- | uniq)
+                [ -n "$res" ] && echo -n -e "$res\tL3" # Affiche 'L3' si nom trouvé dans id_l3
+            fi
+
             echo
         done
     fi
