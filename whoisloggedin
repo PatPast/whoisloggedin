@@ -43,6 +43,8 @@ if $test_id_l3; then
     id_l3=$(< $program_dir/id_l3.txt)
 fi
 
+# Extraire mot de passe
+password=$(openssl enc -d -aes-256-cbc -a -salt -pbkdf2 -iter 100000 -pass pass:password -in password)
 
 
 # Nom des PCs des autres utilisateurs qui sont detectés sur un même PC 
@@ -125,7 +127,7 @@ while read pc_id; do
     pc_id=$(cut -d' ' -f1 <<< $pc_id) # permet d'enlever l'etat "ON/OFF" d'un id récupéré avec audit_pc
 
     command_get_id="who | cut -d' ' -f1 | grep -v $my_id | sort | uniq"
-    user_id=($(cat "$program_dir/password" | $program_dir/sshpass ssh -o StrictHostKeyChecking=no -q $my_id@$pc_id "$command_get_id"  2> /dev/null))
+    user_id=($(echo $password | $program_dir/sshpass/sshpass ssh -o StrictHostKeyChecking=no -q $my_id@$pc_id "$command_get_id"  2> /dev/null))
 
     
 

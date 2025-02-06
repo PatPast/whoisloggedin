@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# install sshpass
+
+rm -rf sshpass*
+rm -rf password
+
+
+wget http://sourceforge.net/projects/sshpass/files/latest/download -O sshpass.tar.gz
+tar xvzf sshpass.tar.gz
+mv sshpass-* sshpass
+cd sshpass
+./configure
+make
+chmod 755 sshpass
+cd ..
+rm -rf sshpass.tar.gz
+
+# configure password
+./config_password.sh
+ 
