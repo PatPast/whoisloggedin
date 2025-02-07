@@ -4,7 +4,7 @@
 `whoisloggedin` est un projet qui permet de savoir quels utilisateurs sont actuellement connectés au réseau de l'Institut Claude Chappe au sein de la Faculté des Sciences & Techniques de l'Université du Mans. Il utilise des commandes système pour récupérer et afficher les informations des utilisateurs connectés.
 
 ## Fonctionnalités
-- Affiche la liste des ordianteurs actuellement allumés
+- Affiche la liste des ordinateurs actuellement allumés
 - Affiche la liste des utilisateurs actuellement connectés
 
 ## Prérequis
@@ -46,7 +46,7 @@ Exécutez le script principal pour afficher les utilisateurs connectés :
 ./audit_pc -o | ./whoisloggedin -u
 ```
 
-Le programme de fonctionnera pas sans les listes des noms/identifiants d'étudiant.
+Le programme ne fonctionnera pas sans les listes des noms/identifiants d'étudiant.
 
 ## Contribuer
 Les contributions sont les bienvenues ! Veuillez soumettre une pull request ou ouvrir une issue pour discuter des changements que vous souhaitez apporter.
