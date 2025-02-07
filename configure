@@ -17,5 +17,5 @@ cd ..
 rm -rf sshpass.tar.gz
 
 # configure password
-./config_password.sh
+./config_password
  
