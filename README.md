@@ -1,4 +1,4 @@
-# WhoisLoggedIn
+# whoisloggedin
 
 ## Description
 `whoisloggedin` est un projet qui permet de savoir quels utilisateurs sont actuellement connectés au réseau de l'Institut Claude Chappe au sein de la Faculté des Sciences & Techniques de l'Université du Mans. Il utilise des commandes système pour récupérer et afficher les informations des utilisateurs connectés.
